@@ -15,6 +15,7 @@ target_include_directories(candle PRIVATE .)
 
 target_link_libraries(candle
 	pico_stdlib
+	pico_multicore
 	hardware_pwm
 )
 

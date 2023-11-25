@@ -32,6 +32,15 @@ volatile bool idle = 1;
 
 #define SYSTICK_RVR 0x00FFFFFF
 
+// Max 134ms (134217us)
+void sleep_us_break(uint32_t us){
+  systick_hw->cvr = systick_hw->rvr;
+  uint32_t until = systick_hw->rvr - us*125;
+  while (systick_hw->cvr > until) {
+    if ( multicore_fifo_get_status() &(1<<0) ) return;
+  }
+}
+
 void draw_slice( uint32_t slice ){
 
 #define scantime (1.0/24.0/(10.5+7.5+4.5+1.5+1.5+4.5+7.5+10.5)/125.0)
@@ -39,30 +48,28 @@ void draw_slice( uint32_t slice ){
   //uint32_t scantime = period * 0.125;
 
   gpio_put_all( framebuffer[slice][0] |(1<<0) );
-  sleep_us(10.5*scantime*period);
+  sleep_us_break(10.5*scantime*period);
 
   gpio_put_all( framebuffer[slice][1] |(1<<1) );
-  sleep_us(7.5*scantime*period);
+  sleep_us_break(7.5*scantime*period);
 
   gpio_put_all( framebuffer[slice][2] |(1<<2) );
-  sleep_us(4.5*scantime*period);
+  sleep_us_break(4.5*scantime*period);
 
   gpio_put_all( framebuffer[slice][3] |(1<<3) );
-  sleep_us(1.5*scantime*period);
+  sleep_us_break(1.5*scantime*period);
 
   gpio_put_all( framebuffer[slice][4] |(1<<4) );
-  sleep_us(1.5*scantime*period);
+  sleep_us_break(1.5*scantime*period);
 
   gpio_put_all( framebuffer[slice][5] |(1<<5) );
-  sleep_us(4.5*scantime*period);
+  sleep_us_break(4.5*scantime*period);
 
   gpio_put_all( framebuffer[slice][6] |(1<<6) );
-  sleep_us(7.5*scantime*period);
+  sleep_us_break(7.5*scantime*period);
 
   gpio_put_all( framebuffer[slice][7] |(1<<7) );
-  sleep_us(10.5*scantime*period);
-  
-  
+  sleep_us_break(10.5*scantime*period);
 
 
   gpio_put_all( 0 );
@@ -71,29 +78,32 @@ void draw_slice( uint32_t slice ){
 
 void core1_entry(void){
 
+  systick_hw->csr = M0PLUS_SYST_CSR_ENABLE_BITS | M0PLUS_SYST_CSR_CLKSOURCE_BITS;
+  systick_hw->rvr = SYSTICK_RVR;
+
   while (1) {
   start:
 
     while (multicore_fifo_pop_blocking() != SIG_START);
 
     for (int i = 0; i< ANGULAR_RESOLUTION; i++) {
-      //if (i&1) draw_slice(0); else draw_slice(1);
- draw_slice(0);
+      if (i&1) draw_slice(0); else draw_slice(1);
+
       if ( multicore_fifo_get_status() &(1<<0) ) goto start;
     }
 
     // delay but break early on signal
-    for (int i = 0; i< MOTOR_TIMEOUT_MS*1000; i++) {
+    for (int i = 0; i< MOTOR_TIMEOUT_MS; i++) {
       if ( multicore_fifo_get_status() &(1<<0) ) goto start;
-      sleep_us(1);
+      sleep_us_break(1000);
     }
 
     // motor off
     pwm_set_gpio_level(MOTOR, 0);
 
-    for (int i = 0; i< IDLE_TIMEOUT_MS*1000; i++) {
+    for (int i = 0; i< IDLE_TIMEOUT_MS; i++) {
       if ( multicore_fifo_get_status() &(1<<0) ) goto start;
-      sleep_us(1);
+      sleep_us_break(1000);
     }
 
     idle = 1;

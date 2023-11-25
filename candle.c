@@ -66,28 +66,28 @@ void draw_slice( uint32_t slice ){
 
 #define scantime (1.0/24.0/(10.5+7.5+4.5+1.5+1.5+4.5+7.5+10.5))
 
-  gpio_put_all( framebuffer[slice][0] |(1<<0) );
+  gpio_put_all( framebuffer[slice][0] );
   sleep_cycles_break(10.5*scantime*period);
 
-  gpio_put_all( framebuffer[slice][1] |(1<<1) );
+  gpio_put_all( framebuffer[slice][1] );
   sleep_cycles_break(7.5*scantime*period);
 
-  gpio_put_all( framebuffer[slice][2] |(1<<2) );
+  gpio_put_all( framebuffer[slice][2] );
   sleep_cycles_break(4.5*scantime*period);
 
-  gpio_put_all( framebuffer[slice][3] |(1<<3) );
+  gpio_put_all( framebuffer[slice][3] );
   sleep_cycles_break(1.5*scantime*period);
 
-  gpio_put_all( framebuffer[slice][4] |(1<<4) );
+  gpio_put_all( framebuffer[slice][4] );
   sleep_cycles_break(1.5*scantime*period);
 
-  gpio_put_all( framebuffer[slice][5] |(1<<5) );
+  gpio_put_all( framebuffer[slice][5] );
   sleep_cycles_break(4.5*scantime*period);
 
-  gpio_put_all( framebuffer[slice][6] |(1<<6) );
+  gpio_put_all( framebuffer[slice][6] );
   sleep_cycles_break(7.5*scantime*period);
 
-  gpio_put_all( framebuffer[slice][7] |(1<<7) );
+  gpio_put_all( framebuffer[slice][7] );
   sleep_cycles_break(10.5*scantime*period);
 
 
@@ -163,7 +163,7 @@ static inline void check_battery(){
 
 void clr(){
   for (int i =0;i<ANGULAR_RESOLUTION; i++) {
-    for (int j =0;j<8;j++) framebuffer[i][j] = CATHODES;
+    for (int j =0;j<8;j++) framebuffer[i][j] = CATHODES|(1<<j);
   }
 }
 
@@ -205,13 +205,9 @@ int main(){
   systick_hw->csr = M0PLUS_SYST_CSR_ENABLE_BITS | M0PLUS_SYST_CSR_CLKSOURCE_BITS;
   systick_hw->rvr = SYSTICK_RVR;
 
-  //clr();
-  //set_voxel(1, 5, 6);
-  //set_voxel(3, 10, 0);
-  //set_voxel(3, 11, 0);
-  //
-  //set_voxel(0, 2, 0);
-  //set_voxel(0, 3, 0);
+  clr();
+  //set_voxel(3, 1, 0);
+  set_voxel(3, 23, 0);
 
   uint32_t timing = 0;
 

@@ -17,6 +17,7 @@ target_link_libraries(candle
 	pico_stdlib
 	pico_multicore
 	hardware_pwm
+	hardware_adc
 )
 
 pico_add_extra_outputs(candle)

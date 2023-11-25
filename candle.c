@@ -24,15 +24,17 @@ uint32_t framebuffer[ANGULAR_RESOLUTION][ 8 ] = {
 
 };
 volatile uint32_t period = 0;
+volatile bool idle = 1;
 
 #define SIG_START 1
 #define MOTOR_TIMEOUT_MS 250
+#define IDLE_TIMEOUT_MS 3000
 
 #define SYSTICK_RVR 0x00FFFFFF
 
 void draw_slice( uint32_t slice ){
 
-#define scantime (1.0/24.0/(10.5+7.5+4.5+1.5+1.5+4.5+7.5+10.5)/125.0    /4.0)
+#define scantime (1.0/24.0/(10.5+7.5+4.5+1.5+1.5+4.5+7.5+10.5)/125.0)
 
   //uint32_t scantime = period * 0.125;
 
@@ -59,6 +61,8 @@ void draw_slice( uint32_t slice ){
 
   gpio_put_all( framebuffer[slice][7] |(1<<7) );
   sleep_us(10.5*scantime*period);
+  
+  
 
 
   gpio_put_all( 0 );
@@ -73,8 +77,8 @@ void core1_entry(void){
     while (multicore_fifo_pop_blocking() != SIG_START);
 
     for (int i = 0; i< ANGULAR_RESOLUTION; i++) {
-      if (i&1) draw_slice(0); else draw_slice(1);
-
+      //if (i&1) draw_slice(0); else draw_slice(1);
+ draw_slice(0);
       if ( multicore_fifo_get_status() &(1<<0) ) goto start;
     }
 
@@ -86,6 +90,14 @@ void core1_entry(void){
 
     // motor off
     pwm_set_gpio_level(MOTOR, 0);
+
+    for (int i = 0; i< IDLE_TIMEOUT_MS*1000; i++) {
+      if ( multicore_fifo_get_status() &(1<<0) ) goto start;
+      sleep_us(1);
+    }
+
+    idle = 1;
+
   }
 }
 
@@ -101,6 +113,7 @@ static inline void check_battery(){
   // Essentially when it gets below 2210, it could be any voltage from 3 to 3.55
 
 //measured: 2120 was about 3.57V
+//Even at >3.8v, reading dipped below 2120 while motor running
 
   uint16_t raw = adc_read();
   if (raw > 2120) return; //2210
@@ -119,9 +132,9 @@ static inline void check_battery(){
 }
 
 
-#define avg_period 64
-uint32_t cycles[avg_period];
-uint32_t cycle_pointer = 0;
+//#define avg_period 64
+//uint32_t cycles[avg_period];
+//uint32_t cycle_pointer = 0;
 
 int main(){
 
@@ -150,26 +163,28 @@ int main(){
   uint32_t timing = 0;
 
   while (1) {
-    check_battery();
+    if (idle) check_battery();
 
     while (gpio_get(IR_SENSOR) == 1);
     uint32_t t0 = systick_hw->cvr;
     multicore_fifo_push_blocking(SIG_START);
+    systick_hw->cvr = SYSTICK_RVR;
+    idle = 0;
 
     // Target 1800RPM or 30RPS, period = 4166666 cycles @ 125MHz
     // 1200RPM or 20rps -> 6250000
 
-    uint32_t cycle = SYSTICK_RVR - t0;
+    period = SYSTICK_RVR - t0;
     if (period > 6250000) pwm_set_gpio_level(MOTOR, 0.9*65535);
     else pwm_set_gpio_level(MOTOR, 0.6*65535);
 
-    cycle_pointer = (cycle_pointer+1)%avg_period;
-    cycles[cycle_pointer] = cycle;
-    uint32_t sum=0;
-    for (int i=0;i<avg_period;i++)
-      sum += cycles[i];
+    //cycle_pointer = (cycle_pointer+1)%avg_period;
+    //cycles[cycle_pointer] = cycle;
+    //uint32_t sum=0;
+    //for (int i=0;i<avg_period;i++)
+    //  sum += cycles[i];
 
-    period = sum >>6;
+    //period = sum >>6;
 
     while (gpio_get(IR_SENSOR) == 0) sleep_us(1);
 

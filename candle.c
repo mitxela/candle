@@ -139,7 +139,7 @@ static inline void check_battery(){
 
 }
 
-void load_frame(bool n, uint32_t* data){
+void load_frame(bool n, const uint32_t* data){
   int k=0;
   for (int i =0;i<ANGULAR_RESOLUTION; i++) {
     for (int j =0;j<8;j++) {

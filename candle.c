@@ -23,7 +23,8 @@ uint32_t framebuffer[2][ANGULAR_RESOLUTION][ 8 ];
 volatile uint32_t period = 0;
 volatile bool idle = 1;
 
-#include "fdata-cube-rotate.h"
+//#include "fdata-cube-rotate.h"
+#include "fdata-liquid.h"
 
 #define SIG_START 1
 #define MOTOR_TIMEOUT_MS 250
@@ -218,7 +219,7 @@ int main(){
     if (period > 6250000) pwm_set_gpio_level(MOTOR, 0.9*65535);
     else pwm_set_gpio_level(MOTOR, 0.6*65535);
 
-    if (++f==24) f=0;
+    if (++f== sizeof framedata / sizeof framedata[0]) f=0;
     load_frame(!active_frame, &framedata[f][0][0]);
     active_frame = !active_frame;
 

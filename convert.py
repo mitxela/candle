@@ -22,7 +22,7 @@ def image_to_bytes(i):
 				if y == 8:
 					word &= ~(1<<16)
 				elif y == 9:
-					word &= ~(1<<24)
+					word &= ~(1<<26)
 				else:
 					word &= ~(1<<(y+8))
 		print(f"0x{word:08X}",end = ", " if x<w-1 else "")

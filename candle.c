@@ -196,8 +196,8 @@ int main(){
   //set_voxel(3, 1, 0);
   //set_voxel(3, 23, 0);
 
-  uint32_t f = 0;//, ft =0;
-  load_frame(0, &framedata[f][0][0]);
+  uint32_t f = 0;
+  load_frame(active_frame, &framedata[f][0][0]);
 
   uint32_t timing = 0;
 
@@ -218,14 +218,11 @@ int main(){
     if (period > 6250000) pwm_set_gpio_level(MOTOR, 0.9*65535);
     else pwm_set_gpio_level(MOTOR, 0.6*65535);
 
-    //if (++ft ==3) {
-    //  ft=0;
-      if (++f==24) f=0;
-      load_frame(0, &framedata[f][0][0]);
-    //}
+    if (++f==24) f=0;
+    load_frame(!active_frame, &framedata[f][0][0]);
+    active_frame = !active_frame;
 
     while (gpio_get(IR_SENSOR) == 0) sleep_us(1);
-
 
 
   }

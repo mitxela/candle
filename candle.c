@@ -31,7 +31,7 @@ int mode = 0;
 
 #define SIG_START 1
 #define MOTOR_TIMEOUT_MS 250
-#define IDLE_TIMEOUT_MS 2000
+#define IDLE_TIMEOUT_MS 1000
 
 #define SYSTICK_RVR 0x00FFFFFF
 
@@ -165,8 +165,8 @@ void clr(){
 void set_voxel(uint32_t r, uint32_t theta, uint32_t z) {
   uint32_t rownum;
   //0x0401FF00
-  if (z == 8) rownum == 16;
-  else if (z == 9) rownum == 26;
+  if (z == 8) rownum = 16;
+  else if (z == 9) rownum = 26;
   else rownum = z+8;
 
   framebuffer[active_frame][theta][r] &= ~(1<<rownum);
@@ -178,11 +178,11 @@ void set_voxel(uint32_t r, uint32_t theta, uint32_t z) {
 void set_voxel_reflect(uint32_t r, uint32_t theta, uint32_t z) {
   uint32_t rownum;
   //0x0401FF00
-  if (z == 8) rownum == 16;
-  else if (z == 9) rownum == 26;
+  if (z == 8) rownum = 16;
+  else if (z == 9) rownum = 26;
   else rownum = z+8;
 
-  if (z>9 || theta>23 || r>7) return;
+  if (z>9 || theta>23 || r>7 || r<0) return;
 
   framebuffer[active_frame][theta][r] &= ~(1<<rownum);
   framebuffer[active_frame][(theta+12)%24][r] &= ~(1<<rownum);
@@ -200,23 +200,30 @@ void load_character(uint32_t r, uint32_t theta, char c){
 }
 
 void load_text(){
-  static const char msg[] = "This is a test, a very long message";
+  static const char msg[] = "  mitxela.com  ";
   static int f = -7, c = 0, slow=0;
 
-  if (++slow<3) return;
-  slow=0;
+  if (++slow==2) {
+    slow=0;
 
-  f++;
-  if (f>7) {
-    f-=6;
-    c++;
-    if (c == (sizeof msg) -2) c=0;
+    f++;
+    if (f>7) {
+      f-=6;
+      c++;
+      if (c == (sizeof msg) -2) c=0;
+    }
   }
+
   clr();
 
   load_character(f,0,msg[c]);
   load_character(f-6,0,msg[c+1]);
   load_character(f-12,0,msg[c+2]);
+
+  for (int i=0;i<4;i++) {
+    set_voxel(0, i*6+(f%6), 0);
+    set_voxel(0, i*6+6-(f%6), 8);
+  }
 
 }
 
@@ -260,7 +267,7 @@ int main(){
     if (idle) {
       check_battery();
       f=0;
-      //mode++; if (mode>4) mode=0;
+      mode++; if (mode>4) mode=0;
     }
     idle = 0;
 
@@ -276,8 +283,7 @@ int main(){
       load_frame(&data[f][0][0]);
 
     if (mode == 0) {
- load_text();
-      //load_frame(&framedata_cube[0][0][0]);
+      load_frame(&framedata_cube[0][0][0]);
     }
     else if (mode == 1) {
       load_static(framedata_cube)
@@ -288,7 +294,8 @@ int main(){
     else if (mode == 3){
       load_static(framedata_fire)
     }
-    else if (mode == 4) {
+    //else if (mode == 4) {
+    else {
       load_text();
     }
 

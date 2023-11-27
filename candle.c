@@ -26,10 +26,11 @@ int mode = 0;
 
 #include "fdata-cube-rotate.h"
 #include "fdata-liquid.h"
+#include "fdata-fire.h"
 
 #define SIG_START 1
 #define MOTOR_TIMEOUT_MS 250
-#define IDLE_TIMEOUT_MS 3000
+#define IDLE_TIMEOUT_MS 2000
 
 #define SYSTICK_RVR 0x00FFFFFF
 
@@ -217,23 +218,29 @@ int main(){
     if (idle) {
       check_battery();
       f=0;
-      mode++; if (mode>1) mode=0;
+      mode++; if (mode>2) mode=0;
     }
     idle = 0;
 
     // Target 1800RPM or 30RPS, period = 4166666 cycles @ 125MHz
     // 1200RPM or 20rps -> 6250000
+    // 24rps = 5208333 cycles
 
     if (period > 6250000) pwm_set_gpio_level(MOTOR, 0.9*65535);
     else pwm_set_gpio_level(MOTOR, 0.6*65535);
 
+    #define load_static( data ) \
+      if (++f>= sizeof data / sizeof data[0]) f=0; \
+      load_frame(&data[f][0][0]);
+
     if (mode == 0) {
-      if (++f>= sizeof framedata_liquid / sizeof framedata_liquid[0]) f=0;
-      load_frame(&framedata_liquid[f][0][0]);
+      load_static(framedata_fire)
     }
-    else if (mode == 1){
-      if (++f>= sizeof framedata_cube / sizeof framedata_cube[0]) f=0;
-      load_frame(&framedata_cube[f][0][0]);
+    else if (mode == 1) {
+      load_static(framedata_liquid)
+    }
+    else if (mode == 2){
+      load_static(framedata_cube)
     }
 
     while (gpio_get(IR_SENSOR) == 0) sleep_us(1);

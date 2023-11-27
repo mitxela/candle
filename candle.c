@@ -22,8 +22,9 @@ volatile bool active_frame = 0;
 uint32_t framebuffer[2][ANGULAR_RESOLUTION][ 8 ];
 volatile uint32_t period = 0;
 volatile bool idle = 1;
+int mode = 0;
 
-//#include "fdata-cube-rotate.h"
+#include "fdata-cube-rotate.h"
 #include "fdata-liquid.h"
 
 #define SIG_START 1
@@ -140,13 +141,16 @@ static inline void check_battery(){
 
 }
 
-void load_frame(bool n, const uint32_t* data){
+void load_frame(const uint32_t* data){
   int k=0;
+  bool n = !active_frame;
   for (int i =0;i<ANGULAR_RESOLUTION; i++) {
     for (int j =0;j<8;j++) {
       framebuffer[n][i][j] = data[k++];
     }
   }
+
+  active_frame = !active_frame;
 }
 
 void clr(){
@@ -198,7 +202,7 @@ int main(){
   //set_voxel(3, 23, 0);
 
   uint32_t f = 0;
-  load_frame(active_frame, &framedata[f][0][0]);
+  load_frame(&framedata_liquid[f][0][0]);
 
   uint32_t timing = 0;
 
@@ -210,7 +214,11 @@ int main(){
     systick_hw->cvr = SYSTICK_RVR;
     period = SYSTICK_RVR - t0;
 
-    if (idle) check_battery();
+    if (idle) {
+      check_battery();
+      f=0;
+      mode++; if (mode>1) mode=0;
+    }
     idle = 0;
 
     // Target 1800RPM or 30RPS, period = 4166666 cycles @ 125MHz
@@ -219,9 +227,14 @@ int main(){
     if (period > 6250000) pwm_set_gpio_level(MOTOR, 0.9*65535);
     else pwm_set_gpio_level(MOTOR, 0.6*65535);
 
-    if (++f== sizeof framedata / sizeof framedata[0]) f=0;
-    load_frame(!active_frame, &framedata[f][0][0]);
-    active_frame = !active_frame;
+    if (mode == 0) {
+      if (++f>= sizeof framedata_liquid / sizeof framedata_liquid[0]) f=0;
+      load_frame(&framedata_liquid[f][0][0]);
+    }
+    else if (mode == 1){
+      if (++f>= sizeof framedata_cube / sizeof framedata_cube[0]) f=0;
+      load_frame(&framedata_cube[f][0][0]);
+    }
 
     while (gpio_get(IR_SENSOR) == 0) sleep_us(1);
 

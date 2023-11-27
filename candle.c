@@ -27,6 +27,7 @@ int mode = 0;
 #include "fdata-cube-rotate.h"
 #include "fdata-liquid.h"
 #include "fdata-fire.h"
+#include "font.h"
 
 #define SIG_START 1
 #define MOTOR_TIMEOUT_MS 250
@@ -160,19 +161,64 @@ void clr(){
   }
 }
 
-// r: [-4...+3]
-void set_voxel(int32_t r, uint32_t theta, uint32_t z) {
+// r: [0...7]
+void set_voxel(uint32_t r, uint32_t theta, uint32_t z) {
   uint32_t rownum;
   //0x0401FF00
   if (z == 8) rownum == 16;
-  else if (z == 9) rownum == 24;
+  else if (z == 9) rownum == 26;
   else rownum = z+8;
 
-  framebuffer[active_frame][theta][r-4] &= ~(1<<rownum);
-  framebuffer[active_frame][(theta+12)%24][3-r] &= ~(1<<rownum);
+  framebuffer[active_frame][theta][r] &= ~(1<<rownum);
+  framebuffer[active_frame][(theta+12)%24][7-r] &= ~(1<<rownum);
 
 }
 
+// r: [0...7]
+void set_voxel_reflect(uint32_t r, uint32_t theta, uint32_t z) {
+  uint32_t rownum;
+  //0x0401FF00
+  if (z == 8) rownum == 16;
+  else if (z == 9) rownum == 26;
+  else rownum = z+8;
+
+  if (z>9 || theta>23 || r>7) return;
+
+  framebuffer[active_frame][theta][r] &= ~(1<<rownum);
+  framebuffer[active_frame][(theta+12)%24][r] &= ~(1<<rownum);
+
+}
+
+void load_character(uint32_t r, uint32_t theta, char c){
+  if (c>'~' || c<'!') return;
+  const uint8_t * a = &font[ 5*(c-'!')];
+  for (int i=0;i<5;i++) {
+    for (int j=0;j<8;j++) {
+      if ((a[i] & (1<<j)) ==0) set_voxel_reflect(r+5-i, theta, 1+j);
+    }
+  }
+}
+
+void load_text(){
+  static const char msg[] = "This is a test, a very long message";
+  static int f = -7, c = 0, slow=0;
+
+  if (++slow<3) return;
+  slow=0;
+
+  f++;
+  if (f>7) {
+    f-=6;
+    c++;
+    if (c == (sizeof msg) -2) c=0;
+  }
+  clr();
+
+  load_character(f,0,msg[c]);
+  load_character(f-6,0,msg[c+1]);
+  load_character(f-12,0,msg[c+2]);
+
+}
 
 int main(){
 
@@ -198,10 +244,6 @@ int main(){
   systick_hw->csr = M0PLUS_SYST_CSR_ENABLE_BITS | M0PLUS_SYST_CSR_CLKSOURCE_BITS;
   systick_hw->rvr = SYSTICK_RVR;
 
-  //clr();
-  //set_voxel(3, 1, 0);
-  //set_voxel(3, 23, 0);
-
   uint32_t f = 0;
   load_frame(&framedata_liquid[f][0][0]);
 
@@ -218,7 +260,7 @@ int main(){
     if (idle) {
       check_battery();
       f=0;
-      mode++; if (mode>2) mode=0;
+      //mode++; if (mode>4) mode=0;
     }
     idle = 0;
 
@@ -234,13 +276,20 @@ int main(){
       load_frame(&data[f][0][0]);
 
     if (mode == 0) {
-      load_static(framedata_fire)
+ load_text();
+      //load_frame(&framedata_cube[0][0][0]);
     }
     else if (mode == 1) {
+      load_static(framedata_cube)
+    }
+    else if (mode == 2) {
       load_static(framedata_liquid)
     }
-    else if (mode == 2){
-      load_static(framedata_cube)
+    else if (mode == 3){
+      load_static(framedata_fire)
+    }
+    else if (mode == 4) {
+      load_text();
     }
 
     while (gpio_get(IR_SENSOR) == 0) sleep_us(1);
